@@ -1,0 +1,54 @@
+version: "3.8"
+services:
+  pgdb:
+    image: postgres:13.2-alpine
+    networks:
+      - net
+    volumes:
+      - /app/postgres/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD_FILE=/run/secrets/pgdb_password
+    secrets:
+      - pgdb_password
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 10s
+
+  nextcloud:
+    image: nextcloud:19.0-apache
+    networks:
+      - net
+    volumes:
+      - /app/nextcloud:/var/www/html
+    environment:
+      - POSTGRES_HOST=pgdb
+      - VIRTUAL_HOST=nc.phnx47.net
+      - LETSENCRYPT_HOST=nc.phnx47.net
+      - LETSENCRYPT_EMAIL=letsencrypt@mail.phnx47.net
+      - NEXTCLOUD_HOSTNAME=nc.phnx47.net
+    depends_on:
+      - pgdb
+    secrets:
+      - pgdb_password
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 10s
+
+networks:
+  net:
+    name: my-net
+    external: true
+
+secrets:
+  pgdb_password:
+    external: true

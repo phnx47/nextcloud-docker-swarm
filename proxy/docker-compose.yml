@@ -1,0 +1,51 @@
+version: "3.8"
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy:alpine
+    networks:
+      - net
+    ports:
+      - 80:80
+      - 443:443
+    labels:
+      com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d
+      - /app/nginx/certs:/etc/nginx/certs:ro
+      - /app/nginx/vhost.d:/etc/nginx/vhost.d
+      - /app/nginx/logs:/var/log/nginx
+      - /app/nginx/html:/usr/share/nginx/html
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    depends_on:
+      - nextcloud
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 10s
+
+  letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    volumes:
+      - /app/nginx/certs:/etc/nginx/certs
+      - /app/nginx/vhost.d:/etc/nginx/vhost.d
+      - /app/nginx/html:/usr/share/nginx/html
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - net 
+    depends_on:
+      - nginx-proxy
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 10s    
+
+networks:
+  net:
+    name: my-net
+    external: true
